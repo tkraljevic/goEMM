@@ -159,7 +159,25 @@ survives a retry is worth knowing about.
 
     # --- put it in place and make it prove itself ---------------------
     New-Item -ItemType Directory -Force -Path $Dir | Out-Null
-    Move-Item -Force $binPath $target
+    try {
+        Move-Item -Force $binPath $target
+    } catch {
+        # Windows will not replace a file that is open, and goEMM is
+        # normally running: the tray starts it at login. The error
+        # Windows gives says "being used by another process" and names
+        # no process, which sends people looking in the wrong place.
+        Die @"
+Could not replace $target because goEMM is running.
+
+Close it first, then run this again:
+
+  $target http stop
+  (and quit goEMM from the system tray, if it is there)
+
+Nothing was changed. Your memories are in a separate file and are not
+affected either way.
+"@
+    }
     # Downloaded files carry a zone marker that makes the first run pop a
     # SmartScreen dialog instead of a message. Clearing it here is the same
     # decision the user would make in that dialog, taken before it

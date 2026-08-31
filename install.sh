@@ -76,7 +76,9 @@ the one it replaces:
 
   $DIR/emm update
 
-To install over it anyway:  sh install.sh --force"
+To install over it anyway:  sh install.sh --force
+  (that replaces the program only — your memories are a separate file.
+   It does not touch emm-tray; run \`$DIR/emm update\` afterwards for that.)"
 fi
 
 # curl_auth exists so the Authorization header is present or absent, never
