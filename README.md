@@ -14,15 +14,16 @@ anything in it.
 
 ## Install
 
-### macOS and Linux
+### macOS and Linux — in Terminal
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.sh | sh
 ```
 
-### Windows
+### Windows — in Command Prompt
 
-Open **Command Prompt** and paste:
+Not the Terminal line above: Windows has no `sh`, and pasting it there
+answers `'sh' is not recognized`. This one:
 
 ```bat
 curl -fsSL -o "%TEMP%\emm-install.bat" https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.bat && "%TEMP%\emm-install.bat"
