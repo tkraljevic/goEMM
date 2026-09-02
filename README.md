@@ -30,7 +30,8 @@ curl -fsSL -o "%TEMP%\emm-install.bat" https://raw.githubusercontent.com/tkralje
 ```
 
 `curl` has shipped with Windows since version 1803, so nothing needs
-installing first.
+installing first. If goEMM is already on the machine, this will say so and stop
+— [installing over it](#if-you-already-have-goemm) takes one more word.
 
 <details>
 <summary>PowerShell, if you prefer it</summary>
@@ -63,9 +64,13 @@ To install over it anyway, add `--force`. That replaces the program only — you
 memories are a separate file and are not touched. It does not update the tray,
 so run `emm update` afterwards for that.
 
+**macOS and Linux — in Terminal:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.sh | sh -s -- --force
 ```
+
+**Windows — in Command Prompt:**
 
 ```bat
 curl -fsSL -o "%TEMP%\emm-install.bat" https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.bat && "%TEMP%\emm-install.bat" --force
