@@ -25,7 +25,7 @@
 #   EMM_INSTALL_DIR=/tmp/x sh install.sh    install somewhere else (testing)
 set -eu
 
-HOST="${EMM_HOST:-https://api.github.com}"
+HOST="${EMM_HOST:-https://github.com}"
 REPO="${EMM_REPO:-tkraljevic/goEMM}"
 # No token by default, on purpose.
 #
@@ -77,8 +77,7 @@ the one it replaces:
   $DIR/emm update
 
 To install over it anyway:  sh install.sh --force
-  (that replaces the program only — your memories are a separate file.
-   It does not touch emm-tray; run \`$DIR/emm update\` afterwards for that.)"
+  (that replaces the program only — your memories are a separate file.)"
 fi
 
 # curl_auth exists so the Authorization header is present or absent, never
@@ -94,18 +93,15 @@ curl_auth() { # curl_auth <accept> <output> <url>
 }
 
 fetch() { # fetch <url> <output> [accept]
-  accept="${3:-application/vnd.github+json}"
+  accept="${3:-application/json}"
   code=$(curl_auth "$accept" "$2" "$1") || \
     die "Could not reach $HOST. Check the network, then try again."
-  if [ "$code" = "401" ] || [ "$code" = "404" ]; then
-    die "$HOST answered $code for
+  if [ "$code" = "404" ]; then
+    die "$HOST answered 404 for
   $1
 
-While the downloads repository is private, an installer needs a token that
-can read it:
-  EMM_TOKEN=... sh install.sh
-
-Nothing was installed."
+The release is missing that file, or EMM_HOST/EMM_REPO point somewhere
+that is not a goEMM release host. Nothing was installed."
   fi
   [ "$code" = "200" ] || die "$HOST answered $code for
   $1
@@ -128,43 +124,28 @@ The token is probably wrong or expired. Set a working one:
 # --- which version ----------------------------------------------------
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-fetch "$HOST/repos/$REPO/releases/latest" "$tmp/rel.json"
+# release.json is what every release carries since v0.8.162: tag, notes
+# and the download address of each file. Read from the download CDN's
+# "latest" alias, never from the GitHub API — the API allows sixty
+# unauthenticated requests an hour per address, and an installer that
+# shares an address with a few other machines then fails with 403 (#137).
+fetch "$HOST/$REPO/releases/latest/download/release.json" "$tmp/rel.json"
 # -n with an explicit p: without it sed prints every line it does NOT
 # match, and `ver` becomes the whole response with one line rewritten.
 ver=$(sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' "$tmp/rel.json" | head -1)
 case "$ver" in
   v*) : ;;
-  *) die "Could not read the latest version from the release listing. Nothing was installed." ;;
+  *) die "Could not read the latest version from release.json. Nothing was installed." ;;
 esac
 say "Newest release: $ver"
 
 # --- download and prove it is what it claims --------------------------
 #
-# By asset id, not by a tidy download URL. On a private repository the
-# browser download address answers 404 even with a valid token; only the
-# API address works, and only when asked for octet-stream — without that
-# it returns 200 carrying the asset's JSON description.
-#
-# The newlines come out first and the listing is then split on '{', which
-# puts each asset's id and name in one chunk ("id" comes before "name",
-# and the nested uploader object opens a chunk of its own after both).
-# That is as much JSON parsing as a POSIX shell should attempt.
-asset_id() { # asset_id <name>
-  tr -d '\n' < "$tmp/rel.json" | tr '{' '\n' \
-    | grep "\"name\": *\"$1\"" \
-    | sed -n 's/.*"id": *\([0-9][0-9]*\).*/\1/p' \
-    | head -1
-}
-
+# By tag, from the download CDN: the same address release.json lists for
+# each file. No asset ids, no API.
 get_asset() { # get_asset <name> <output>
-  id=$(asset_id "$1")
-  [ -n "$id" ] || die "Release $ver publishes no $1.
-
-That means the release is incomplete, not that anything is wrong here.
-Nothing was installed."
-  fetch "$HOST/repos/$REPO/releases/assets/$id" "$2" "application/octet-stream"
+  fetch "$HOST/$REPO/releases/download/$ver/$1" "$2" "application/octet-stream"
 }
-
 get_asset "$asset" "$tmp/$asset"
 get_asset "SHA256SUMS.txt" "$tmp/SHA256SUMS.txt"
 
