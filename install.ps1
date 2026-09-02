@@ -27,13 +27,17 @@ param([switch]$Force)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$Host_    = if ($env:EMM_HOST) { $env:EMM_HOST } else { 'https://api.github.com' }
+$Host_    = if ($env:EMM_HOST) { $env:EMM_HOST } else { 'https://github.com' }
 $Repo     = if ($env:EMM_REPO) { $env:EMM_REPO } else { 'tkraljevic/goEMM' }
 # No token by default, on purpose — see install.sh for why.
 $Token    = $env:EMM_TOKEN
 $Dir      = if ($env:EMM_INSTALL_DIR) { $env:EMM_INSTALL_DIR } else { Join-Path $env:USERPROFILE '.emm' }
 
-function Die($msg) { Write-Host ''; Write-Error $msg -ErrorAction Continue; exit 1 }
+# Write-Host, not Write-Error. Write-Error decorates what it is given
+# with the script name, a line number and a stack — diagnostics for
+# whoever wrote the script, printed at somebody who is trying to install
+# a program. The message here is already the whole explanation.
+function Die($msg) { Write-Host ''; Write-Host $msg; exit 1 }
 
 function Auth-Headers($accept) {
     $h = @{ 'Accept' = $accept; 'User-Agent' = 'goEMM-installer' }
@@ -68,21 +72,20 @@ To install over it anyway:  .\install.ps1 -Force
 
 # --- which version ----------------------------------------------------
 try {
-    $rel = Invoke-RestMethod -Headers (Auth-Headers 'application/vnd.github+json') `
-        -Uri "$Host_/repos/$Repo/releases/latest"
+    # release.json: what every release carries since v0.8.162, read from
+    # the download CDN's "latest" alias — never the GitHub API, which
+    # allows sixty unauthenticated requests an hour per address (#137).
+    $rel = Invoke-RestMethod -Headers (Auth-Headers 'application/json') `
+        -Uri "$Host_/$Repo/releases/latest/download/release.json"
 } catch {
     $code = try { $_.Exception.Response.StatusCode.value__ } catch { $null }
-    if ($code -eq 401 -or $code -eq 404) {
-        Die @"
-$Host_ answered $code for the release listing.
-
-While the downloads repository is private, an installer needs a token that
-can read it:
-  `$env:EMM_TOKEN = '...'
-
-Nothing was installed.
+        if ($code -eq 404) {
+            Die @"
+$Host_ answered 404 for release.json.
+The release is missing it, or EMM_HOST/EMM_REPO point somewhere that is
+not a goEMM release host. Nothing was installed.
 "@
-    }
+        }
     Die "Could not reach $Host_. Check the network, then try again.`nNothing was installed."
 }
 $ver = $rel.tag_name
@@ -96,8 +99,7 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("emm-install-" + [guid]::New
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
     function Get-Asset($name, $out) {
-        # By asset id, not by a tidy download URL: on a private repository
-        # the browser download address answers 404 even with a valid token.
+        # By tag, from the download CDN — the address release.json lists.
         $a = $rel.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
         if (-not $a) {
             Die @"
@@ -108,7 +110,7 @@ Nothing was installed.
 "@
         }
         Invoke-WebRequest -Headers (Auth-Headers 'application/octet-stream') `
-            -Uri "$Host_/repos/$Repo/releases/assets/$($a.id)" -OutFile $out
+            -Uri "$Host_/$Repo/releases/download/$ver/$name" -OutFile $out
         # A release host can answer 200 with something that is not the file.
         $head = [System.IO.File]::ReadAllBytes($out)[0..([Math]::Min(14, (Get-Item $out).Length - 1))]
         $text = ([System.Text.Encoding]::ASCII.GetString($head)).ToLower()
