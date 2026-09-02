@@ -20,11 +20,28 @@ anything in it.
 curl -fsSL https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.sh | sh
 ```
 
-### Windows (PowerShell)
+### Windows
+
+Open **Command Prompt** and paste:
+
+```bat
+curl -fsSL -o "%TEMP%\emm-install.bat" https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.bat && "%TEMP%\emm-install.bat"
+```
+
+`curl` has shipped with Windows since version 1803, so nothing needs
+installing first.
+
+<details>
+<summary>PowerShell, if you prefer it</summary>
 
 ```powershell
 irm https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.ps1 | iex
 ```
+
+If that is refused, it is the execution policy rather than goEMM. The Command
+Prompt line above sidesteps that question entirely, which is why it is the one
+offered first.
+</details>
 
 It works out which build your machine needs, checks the download against the
 published checksums, and refuses to install a binary that will not run. If
@@ -49,16 +66,20 @@ so run `emm update` afterwards for that.
 curl -fsSL https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.sh | sh -s -- --force
 ```
 
-```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.ps1))) -Force
+```bat
+curl -fsSL -o "%TEMP%\emm-install.bat" https://raw.githubusercontent.com/tkraljevic/goEMM/main/install.bat && "%TEMP%\emm-install.bat" --force
 ```
 
 **On Windows, stop goEMM first.** Windows will not replace a file that is open,
 and the tray usually has it running:
 
-```powershell
+```bat
 emm http stop
 ```
+
+Quit it from the system tray too, if it is there. The installer says so if it
+runs into a locked file, rather than leaving you with the message Windows gives,
+which names no process.
 
 ---
 
