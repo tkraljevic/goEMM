@@ -130,7 +130,10 @@ echo Checksum verified.
 
 rem --- put it in place and make it prove itself -------------------------
 if not exist "%DIR%" mkdir "%DIR%" >nul 2>&1
-move /y "%TMPD%\%ASSET%" "%DIR%\emm.exe" >nul
+rem  2>nul as well as >nul: without it Windows prints its own "Access
+rem  is denied." first, and the message written for this case arrives
+rem  underneath an error that names no process and no remedy.
+move /y "%TMPD%\%ASSET%" "%DIR%\emm.exe" >nul 2>nul
 if errorlevel 1 (
   echo.
   echo Could not put emm.exe in %DIR%, most likely because goEMM is running.
